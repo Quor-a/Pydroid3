@@ -88,13 +88,11 @@ public class PythonEngine {
         isRunning = true;
         workerHandler.post(() -> {
             try {
-                // 直接使用 Chaquoco 执行代码
-                PyObject mainModule = python.getModule("__main__");
+                // 使用 exec_helper 模块执行代码（解决 frame does not exist 问题）
+                PyObject helper = python.getModule("exec_helper");
+                PyObject result = helper.callAttr("run_code", code);
                 
-                // 使用 exec 执行代码
-                python.getModule("builtins").callAttr("exec", code);
-                
-                String output = "执行完成";
+                String output = result != null ? result.toString() : "执行完成";
                 outputHistory.add(output);
                 
                 if (callback != null) {
@@ -157,8 +155,8 @@ public class PythonEngine {
         
         workerHandler.post(() -> {
             try {
-                PyObject mainModule = python.getModule("__main__");
-                PyObject result = mainModule.callAttr("eval", code);
+                PyObject helper = python.getModule("exec_helper");
+                PyObject result = helper.callAttr("eval_code", code);
                 String output = result != null ? result.toString() : "";
                 
                 if (cb != null) {

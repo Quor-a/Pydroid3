@@ -1,9 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.INTERNET" />
+    
+    <!-- ACI 权限：引用控制端定义的权限（不要自己定义） -->
+    <uses-permission android:name="ai.aci.permission.CALL" />
+    <uses-permission android:name="ai.aci.permission.DISCOVER" />
+    <uses-permission android:name="ai.aci.permission.CALL_DANGEROUS" />
+    
+    <!-- 如果 aidl-aci-core 库带入了权限定义，用 tools:node="remove" 剥除 -->
+    <permission android:name="ai.aci.permission.CALL" tools:node="remove" />
+    <permission android:name="ai.aci.permission.CALL_DANGEROUS" tools:node="remove" />
+    <permission android:name="ai.aci.permission.DISCOVER" tools:node="remove" />
     
     <application
         android:name="com.chaquo.python.android.PyApplication"
@@ -30,6 +41,35 @@
         <activity
             android:name=".ui.TerminalActivity"
             android:windowSoftInputMode="adjustResize" />
+        
+        <!-- ACI 受控端服务 -->
+        <service
+            android:name=".aci.PydroidAciService"
+            android:exported="true"
+            android:permission="ai.aci.permission.CALL">
+            <intent-filter>
+                <action android:name="ai.aci.core.ACTION_BIND" />
+            </intent-filter>
+        </service>
+        
+        <!-- ACI 唤醒接收器 -->
+        <receiver
+            android:name=".aci.PydroidAciWakeReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="ai.aci.core.ACTION_WAKE" />
+            </intent-filter>
+        </receiver>
+        
+        <!-- 包可见性：声明本 App 提供/响应的 ACI 意图 -->
+        <queries>
+            <intent>
+                <action android:name="ai.aci.core.ACTION_BIND" />
+            </intent>
+            <intent>
+                <action android:name="ai.aci.core.ACTION_WAKE" />
+            </intent>
+        </queries>
             
         <provider
             android:name="androidx.core.content.FileProvider"

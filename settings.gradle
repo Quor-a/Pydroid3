@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Pydroid3"
 include ':app'
+include ':aidl-aci-core'
