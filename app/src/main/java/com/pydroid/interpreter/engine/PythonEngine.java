@@ -62,6 +62,7 @@ public class PythonEngine {
         
         workerHandler.post(() -> {
             try {
+                // Python 已在 PydroidApplication 中通过 Python.start() 初始化
                 python = Python.getInstance();
                 initialized = true;
                 Log.i(TAG, "Python initialized via Chaquoco");
