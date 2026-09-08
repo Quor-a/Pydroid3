@@ -3,7 +3,12 @@ package com.pydroid.interpreter.aci;
 import android.os.Bundle;
 import android.util.Log;
 
+import ai.aidl.aci.core.AciIntentBridge;
+import ai.aidl.aci.core.AidlAciAudit;
 import ai.aidl.aci.core.AidlAciError;
+import ai.aidl.aci.core.AidlAciEvents;
+import ai.aidl.aci.core.AidlAciProtocol;
+import ai.aidl.aci.core.AidlAciRegistry;
 import ai.aidl.aci.core.AidlAciRequest;
 import ai.aidl.aci.core.AidlAciResponse;
 import ai.aidl.aci.core.BaseAidlAciService;
@@ -25,12 +30,18 @@ public class PydroidAciService extends BaseAidlAciService {
     
     // ZorvAI 主程序包名（控制端）
     private static final String ZORVAI_PACKAGE = "com.ai.assistance.quro";
+    
+    private AidlAciAudit audit;
 
     @Override
     public void onCreate() {
         try {
             super.onCreate();
+            audit = new AidlAciAudit(this);
             Log.i(TAG, "Pydroid3 ACI 服务已启动");
+            
+            // 发布服务绑定事件
+            AidlAciEvents.emit(AidlAciEvents.EVENT_SERVICE_BOUND, getPackageName());
         } catch (Throwable e) {
             Log.e(TAG, "ACI 服务启动失败", e);
         }
@@ -41,52 +52,64 @@ public class PydroidAciService extends BaseAidlAciService {
         Log.i(TAG, "注册 Pydroid3 ACI 能力...");
 
         // 能力 1: 执行 Python 代码
-        capabilities.add(
-            Capability.create("execute_python", "执行 Python 代码并返回输出结果")
-                .addParam("code", "string", true, "要执行的 Python 代码")
-                .addResult("output", "string", "执行输出结果")
-                .addResult("error", "string", "错误信息（如果有）")
-                .addResult("exit_code", "int", "退出码，0 表示成功")
-                .addFlag(Capability.FLAG_BACKGROUND)
-                .addFlag(Capability.FLAG_NO_UI)
-        );
+        Capability executePython = Capability.create("execute_python", "执行 Python 代码并返回输出结果")
+            .addParam("code", "string", true, "要执行的 Python 代码")
+            .addResult("output", "string", "执行输出结果")
+            .addResult("error", "string", "错误信息（如果有）")
+            .addResult("exit_code", "int", "退出码，0 表示成功")
+            .addFlag(Capability.FLAG_BACKGROUND)
+            .addFlag(Capability.FLAG_NO_UI);
+        capabilities.add(executePython);
+        AidlAciRegistry.register(getPackageName(), executePython);
 
         // 能力 2: 执行 Python 文件
-        capabilities.add(
-            Capability.create("execute_file", "执行指定路径的 Python 文件")
-                .addParam("file_path", "string", true, "Python 文件的绝对路径")
-                .addResult("output", "string", "执行输出结果")
-                .addResult("error", "string", "错误信息（如果有）")
-                .addResult("exit_code", "int", "退出码")
-                .addFlag(Capability.FLAG_BACKGROUND)
-                .addFlag(Capability.FLAG_NO_UI)
-        );
+        Capability executeFile = Capability.create("execute_file", "执行指定路径的 Python 文件")
+            .addParam("file_path", "string", true, "Python 文件的绝对路径")
+            .addResult("output", "string", "执行输出结果")
+            .addResult("error", "string", "错误信息（如果有）")
+            .addResult("exit_code", "int", "退出码")
+            .addFlag(Capability.FLAG_BACKGROUND)
+            .addFlag(Capability.FLAG_NO_UI);
+        capabilities.add(executeFile);
+        AidlAciRegistry.register(getPackageName(), executeFile);
 
         // 能力 3: 获取 Python 版本
-        capabilities.add(
-            Capability.create("get_python_version", "获取当前 Python 解释器版本信息")
-                .addResult("version", "string", "Python 版本字符串")
-                .addFlag(Capability.FLAG_NO_UI)
-        );
+        Capability getVersion = Capability.create("get_python_version", "获取当前 Python 解释器版本信息")
+            .addResult("version", "string", "Python 版本字符串")
+            .addFlag(Capability.FLAG_NO_UI);
+        capabilities.add(getVersion);
+        AidlAciRegistry.register(getPackageName(), getVersion);
 
         // 能力 4: 获取解释器状态
-        capabilities.add(
-            Capability.create("get_engine_status", "获取 Python 引擎状态信息")
-                .addResult("initialized", "boolean", "是否已初始化")
-                .addResult("running", "boolean", "是否正在执行代码")
-                .addResult("version", "string", "Python 版本")
-                .addFlag(Capability.FLAG_NO_UI)
-        );
+        Capability getStatus = Capability.create("get_engine_status", "获取 Python 引擎状态信息")
+            .addResult("initialized", "boolean", "是否已初始化")
+            .addResult("running", "boolean", "是否正在执行代码")
+            .addResult("version", "string", "Python 版本")
+            .addFlag(Capability.FLAG_NO_UI);
+        capabilities.add(getStatus);
+        AidlAciRegistry.register(getPackageName(), getStatus);
 
         // 能力 5: 交互式执行（REPL 模式）
-        capabilities.add(
-            Capability.create("eval_python", "交互式执行 Python 表达式并返回结果")
-                .addParam("expression", "string", true, "要执行的 Python 表达式")
-                .addResult("result", "string", "表达式计算结果")
-                .addResult("error", "string", "错误信息（如果有）")
-                .addFlag(Capability.FLAG_BACKGROUND)
-                .addFlag(Capability.FLAG_NO_UI)
-        );
+        Capability evalPython = Capability.create("eval_python", "交互式执行 Python 表达式并返回结果")
+            .addParam("expression", "string", true, "要执行的 Python 表达式")
+            .addResult("result", "string", "表达式计算结果")
+            .addResult("error", "string", "错误信息（如果有）")
+            .addFlag(Capability.FLAG_BACKGROUND)
+            .addFlag(Capability.FLAG_NO_UI);
+        capabilities.add(evalPython);
+        AidlAciRegistry.register(getPackageName(), evalPython);
+
+        // 能力 6: 协议协商（ACI 标准能力）
+        Capability protocol = Capability.create("aci_protocol", "返回 ACI 协议版本信息")
+            .addResult("protocol_version", "string", "当前协议版本")
+            .addResult("semver", "string", "语义化版本号")
+            .addResult("supported", "string", "支持的协议列表（JSON 数组）")
+            .addFlag(Capability.FLAG_NO_UI);
+        capabilities.add(protocol);
+        AidlAciRegistry.register(getPackageName(), protocol);
+
+        // 能力 7: Intent 代理（ACI 标准能力）
+        capabilities.add(AciIntentBridge.capability());
 
         Log.i(TAG, "已注册 " + capabilities.size() + " 个 ACI 能力");
     }
@@ -110,32 +133,86 @@ public class PydroidAciService extends BaseAidlAciService {
         Bundle params = request.getParams();
         
         Log.i(TAG, "收到 ACI 调用: " + capability);
+        
+        long startTime = System.currentTimeMillis();
+        boolean success = false;
+        int errorCode = 0;
 
         try {
+            AidlAciResponse response;
+            
             switch (capability) {
                 case "execute_python":
-                    return handleExecutePython(params);
+                    response = handleExecutePython(params);
+                    break;
                 case "execute_file":
-                    return handleExecuteFile(params);
+                    response = handleExecuteFile(params);
+                    break;
                 case "get_python_version":
-                    return handleGetVersion();
+                    response = handleGetVersion();
+                    break;
                 case "get_engine_status":
-                    return handleGetStatus();
+                    response = handleGetStatus();
+                    break;
                 case "eval_python":
-                    return handleEvalPython(params);
+                    response = handleEvalPython(params);
+                    break;
+                case "aci_protocol":
+                    response = handleProtocol();
+                    break;
+                case "intent":
+                    response = AciIntentBridge.handle(this, params);
+                    break;
                 default:
-                    return AidlAciResponse.error(
+                    response = AidlAciResponse.error(
                         AidlAciError.CAPABILITY_NOT_FOUND,
                         "未知能力: " + capability
                     );
             }
+            
+            success = response.isSuccess();
+            errorCode = response.getErrorCode();
+            
+            return response;
         } catch (Exception e) {
             Log.e(TAG, "处理 ACI 调用失败: " + capability, e);
+            
+            // 发布调用失败事件
+            AidlAciEvents.emit(AidlAciEvents.EVENT_CALL_FAILED, capability);
+            
             return AidlAciResponse.error(
                 AidlAciError.INTERNAL_ERROR,
                 "执行失败: " + e.getMessage()
             );
+        } finally {
+            long duration = System.currentTimeMillis() - startTime;
+            
+            // 记录审计日志
+            if (audit != null) {
+                audit.log(getPackageName(), capability, success, errorCode, duration);
+            }
         }
+    }
+    
+    /**
+     * 处理协议协商请求
+     */
+    private AidlAciResponse handleProtocol() {
+        AidlAciResponse response = AidlAciResponse.success();
+        response.putResult("protocol_version", AidlAciProtocol.PROTOCOL_VERSION);
+        response.putResult("semver", AidlAciProtocol.PROTOCOL_SEMVER);
+        
+        try {
+            org.json.JSONArray supported = new org.json.JSONArray();
+            for (String p : AidlAciProtocol.SUPPORTED) {
+                supported.put(p);
+            }
+            response.putResult("supported", supported.toString());
+        } catch (Throwable e) {
+            response.putResult("supported", "[]");
+        }
+        
+        return response;
     }
 
     /**

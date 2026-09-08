@@ -16,6 +16,16 @@
     <permission android:name="ai.aci.permission.CALL_DANGEROUS" tools:node="remove" />
     <permission android:name="ai.aci.permission.DISCOVER" tools:node="remove" />
     
+    <!-- 包可见性：声明本 App 提供/响应的 ACI 意图 -->
+    <queries>
+        <intent>
+            <action android:name="ai.aci.core.ACTION_BIND" />
+        </intent>
+        <intent>
+            <action android:name="ai.aci.core.ACTION_WAKE" />
+        </intent>
+    </queries>
+    
     <application
         android:name="com.chaquo.python.android.PyApplication"
         android:allowBackup="true"
@@ -60,16 +70,6 @@
                 <action android:name="ai.aci.core.ACTION_WAKE" />
             </intent-filter>
         </receiver>
-        
-        <!-- 包可见性：声明本 App 提供/响应的 ACI 意图 -->
-        <queries>
-            <intent>
-                <action android:name="ai.aci.core.ACTION_BIND" />
-            </intent>
-            <intent>
-                <action android:name="ai.aci.core.ACTION_WAKE" />
-            </intent>
-        </queries>
             
         <provider
             android:name="androidx.core.content.FileProvider"
