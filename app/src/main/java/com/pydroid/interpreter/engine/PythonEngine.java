@@ -62,7 +62,6 @@ public class PythonEngine {
         
         workerHandler.post(() -> {
             try {
-                // 使用 Chaquoco 初始化 Python
                 python = Python.getInstance();
                 initialized = true;
                 Log.i(TAG, "Python initialized via Chaquoco");
@@ -88,31 +87,13 @@ public class PythonEngine {
         isRunning = true;
         workerHandler.post(() -> {
             try {
-                // 使用 Chaquoco 执行代码
-                // 创建输出捕获
-                String wrappedCode = 
-                    "import sys\n" +
-                    "from io import StringIO\n" +
-                    "_old_stdout = sys.stdout\n" +
-                    "_old_stderr = sys.stderr\n" +
-                    "sys.stdout = StringIO()\n" +
-                    "sys.stderr = StringIO()\n" +
-                    "try:\n" +
-                    "    " + code.replace("\n", "\n    ") + "\n" +
-                    "    _output = sys.stdout.getvalue()\n" +
-                    "    _error = sys.stderr.getvalue()\n" +
-                    "except Exception as e:\n" +
-                    "    _output = ''\n" +
-                    "    _error = str(e)\n" +
-                    "finally:\n" +
-                    "    sys.stdout = _old_stdout\n" +
-                    "    sys.stderr = _old_stderr\n" +
-                    "_result = _output + _error\n";
+                // 直接使用 Chaquoco 执行代码
+                PyObject mainModule = python.getModule("__main__");
                 
-                PyObject module = python.getModule("__main__");
-                module.callAttr("exec", wrappedCode);
+                // 使用 exec 执行代码
+                python.getModule("builtins").callAttr("exec", code);
                 
-                String output = "Code executed";
+                String output = "执行完成";
                 outputHistory.add(output);
                 
                 if (callback != null) {
@@ -120,6 +101,7 @@ public class PythonEngine {
                     callback.onExecutionComplete(0);
                 }
             } catch (Exception e) {
+                Log.e(TAG, "Execution error", e);
                 if (callback != null) {
                     callback.onError(e.getMessage());
                     callback.onExecutionComplete(1);
@@ -142,7 +124,6 @@ public class PythonEngine {
         isRunning = true;
         workerHandler.post(() -> {
             try {
-                // 读取文件
                 StringBuilder sb = new StringBuilder();
                 try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
                     String line;
@@ -151,7 +132,6 @@ public class PythonEngine {
                     }
                 }
                 
-                // 执行代码
                 executeCode(sb.toString());
                 
             } catch (IOException e) {
@@ -176,8 +156,8 @@ public class PythonEngine {
         
         workerHandler.post(() -> {
             try {
-                // 执行单行代码
-                PyObject result = python.getModule("__main__").callAttr("eval", code);
+                PyObject mainModule = python.getModule("__main__");
+                PyObject result = mainModule.callAttr("eval", code);
                 String output = result != null ? result.toString() : "";
                 
                 if (cb != null) {
