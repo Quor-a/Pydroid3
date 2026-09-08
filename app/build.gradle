@@ -47,4 +47,5 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.core:core:1.12.0'
     implementation project(':aidl-aci-core')
+    implementation project(':lib_aci')
 }
