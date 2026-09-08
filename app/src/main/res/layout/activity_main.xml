@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="?attr/colorPrimary"
+            app:titleTextColor="@android:color/white" />
+
+    </com.google.android.material.appbar.AppBarLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+        <!-- 输出区域 -->
+        <ScrollView
+            android:id="@+id/outputScroll"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:background="#1E1E1E"
+            android:padding="8dp">
+
+            <TextView
+                android:id="@+id/outputText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:textColor="#00FF00"
+                android:textSize="12sp" />
+
+        </ScrollView>
+
+        <!-- 状态栏 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#2D2D2D"
+            android:gravity="center_vertical"
+            android:padding="4dp">
+
+            <TextView
+                android:id="@+id/statusIndicator"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="就绪"
+                android:textColor="#AAAAAA"
+                android:textSize="11sp" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <Button
+                android:id="@+id/clearButton"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:text="清空"
+                android:textSize="11sp"
+                style="?attr/materialButtonOutlinedStyle" />
+
+        </LinearLayout>
+
+        <!-- 代码输入区域 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#252525"
+            android:padding="8dp">
+
+            <EditText
+                android:id="@+id/codeInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="80dp"
+                android:maxHeight="150dp"
+                android:background="#1E1E1E"
+                android:fontFamily="monospace"
+                android:gravity="top|start"
+                android:hint="输入 Python 代码..."
+                android:inputType="textMultiLine"
+                android:padding="8dp"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#666666"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/runButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="▶ 运行"
+                android:textSize="14sp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
