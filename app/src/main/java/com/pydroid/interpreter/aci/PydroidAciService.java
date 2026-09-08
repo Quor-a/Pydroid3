@@ -15,6 +15,10 @@ import ai.aidl.aci.core.BaseAidlAciService;
 import ai.aidl.aci.core.Capability;
 
 import com.pydroid.interpreter.engine.PythonEngine;
+import com.pydroid.interpreter.mcp.McpBridge;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -111,6 +115,38 @@ public class PydroidAciService extends BaseAidlAciService {
         // 能力 7: Intent 代理（ACI 标准能力）
         capabilities.add(AciIntentBridge.capability());
 
+        // 能力 8: MCP-ACI 桥接 - 列出 MCP 工具
+        Capability mcpList = Capability.create("mcp_aci_list", "列出所有可通过 ACI 调用的 MCP 工具")
+            .addResult("tools", "string", "MCP 工具列表（JSON 数组）")
+            .addFlag(Capability.FLAG_NO_UI);
+        capabilities.add(mcpList);
+        AidlAciRegistry.register(getPackageName(), mcpList);
+
+        // 能力 9: MCP-ACI 桥接 - 调用 MCP 工具
+        Capability mcpCall = Capability.create("mcp_aci_call", "通过 ACI 调用 MCP 工具")
+            .addParam("capability", "string", true, "MCP 能力 ID（格式：mcp_{toolName}）")
+            .addParam("args", "string", false, "工具参数（JSON 对象）")
+            .addResult("result", "string", "调用结果（JSON 对象）")
+            .addResult("error", "string", "错误信息（如果有）")
+            .addFlag(Capability.FLAG_BACKGROUND)
+            .addFlag(Capability.FLAG_NO_UI);
+        capabilities.add(mcpCall);
+        AidlAciRegistry.register(getPackageName(), mcpCall);
+
+        // 能力 10: MCP-ACI 桥接 - 管理桥接器
+        Capability mcpBridge = Capability.create("mcp_aci_bridge", "管理 MCP-ACI 桥接器")
+            .addParam("action", "string", true, "操作：add_server/remove_server/refresh/status")
+            .addParam("name", "string", false, "服务器名称（add/remove 时必需）")
+            .addParam("url", "string", false, "服务器 URL（add 时必需）")
+            .addParam("timeout", "int", false, "超时时间（毫秒，默认 5000）")
+            .addResult("success", "boolean", "操作是否成功")
+            .addResult("status", "string", "桥接器状态（JSON 对象）")
+            .addResult("error", "string", "错误信息（如果有）")
+            .addFlag(Capability.FLAG_BACKGROUND)
+            .addFlag(Capability.FLAG_NO_UI);
+        capabilities.add(mcpBridge);
+        AidlAciRegistry.register(getPackageName(), mcpBridge);
+
         Log.i(TAG, "已注册 " + capabilities.size() + " 个 ACI 能力");
     }
 
@@ -162,6 +198,15 @@ public class PydroidAciService extends BaseAidlAciService {
                     break;
                 case "intent":
                     response = AciIntentBridge.handle(this, params);
+                    break;
+                case "mcp_aci_list":
+                    response = handleMcpList();
+                    break;
+                case "mcp_aci_call":
+                    response = handleMcpCall(params);
+                    break;
+                case "mcp_aci_bridge":
+                    response = handleMcpBridge(params);
                     break;
                 default:
                     response = AidlAciResponse.error(
@@ -437,6 +482,150 @@ public class PydroidAciService extends BaseAidlAciService {
         }
 
         return result;
+    }
+
+    /**
+     * 处理 MCP-ACI 桥接 - 列出所有 MCP 工具
+     */
+    private AidlAciResponse handleMcpList() {
+        try {
+            JSONArray tools = McpBridge.getInstance().getMcpCapabilities();
+            
+            AidlAciResponse response = AidlAciResponse.success();
+            response.putResult("tools", tools.toString());
+            
+            return response;
+        } catch (Exception e) {
+            Log.e(TAG, "列出 MCP 工具失败", e);
+            return AidlAciResponse.error(
+                AidlAciError.INTERNAL_ERROR,
+                "列出 MCP 工具失败: " + e.getMessage()
+            );
+        }
+    }
+
+    /**
+     * 处理 MCP-ACI 桥接 - 调用 MCP 工具
+     */
+    private AidlAciResponse handleMcpCall(Bundle params) {
+        if (params == null || !params.containsKey("capability")) {
+            return AidlAciResponse.error(
+                AidlAciError.BAD_REQUEST,
+                "缺少必需参数: capability"
+            );
+        }
+
+        String capabilityId = params.getString("capability");
+        String argsJson = params.getString("args");
+        
+        try {
+            JSONObject args = new JSONObject();
+            if (argsJson != null && !argsJson.isEmpty()) {
+                args = new JSONObject(argsJson);
+            }
+            
+            JSONObject result = McpBridge.getInstance().callMcpTool(capabilityId, args);
+            
+            AidlAciResponse response = AidlAciResponse.success();
+            response.putResult("result", result.toString());
+            
+            return response;
+        } catch (IllegalArgumentException e) {
+            return AidlAciResponse.error(
+                AidlAciError.BAD_REQUEST,
+                e.getMessage()
+            );
+        } catch (Exception e) {
+            Log.e(TAG, "调用 MCP 工具失败: " + capabilityId, e);
+            return AidlAciResponse.error(
+                AidlAciError.INTERNAL_ERROR,
+                "调用 MCP 工具失败: " + e.getMessage()
+            );
+        }
+    }
+
+    /**
+     * 处理 MCP-ACI 桥接 - 管理桥接器
+     */
+    private AidlAciResponse handleMcpBridge(Bundle params) {
+        if (params == null || !params.containsKey("action")) {
+            return AidlAciResponse.error(
+                AidlAciError.BAD_REQUEST,
+                "缺少必需参数: action"
+            );
+        }
+
+        String action = params.getString("action");
+        
+        try {
+            AidlAciResponse response = AidlAciResponse.success();
+            
+            switch (action) {
+                case "add_server": {
+                    String name = params.getString("name");
+                    String url = params.getString("url");
+                    int timeout = params.containsKey("timeout") ? 
+                        params.getInt("timeout") : 5000;
+                    
+                    if (name == null || url == null) {
+                        return AidlAciResponse.error(
+                            AidlAciError.BAD_REQUEST,
+                            "add_server 需要 name 和 url 参数"
+                        );
+                    }
+                    
+                    McpBridge.getInstance().addServer(name, url, timeout);
+                    response.putResult("success", true);
+                    break;
+                }
+                
+                case "remove_server": {
+                    String name = params.getString("name");
+                    if (name == null) {
+                        return AidlAciResponse.error(
+                            AidlAciError.BAD_REQUEST,
+                            "remove_server 需要 name 参数"
+                        );
+                    }
+                    
+                    McpBridge.getInstance().removeServer(name);
+                    response.putResult("success", true);
+                    break;
+                }
+                
+                case "refresh": {
+                    String name = params.getString("name");
+                    if (name != null) {
+                        McpBridge.getInstance().refreshTools(name);
+                    } else {
+                        McpBridge.getInstance().refreshAllTools();
+                    }
+                    response.putResult("success", true);
+                    break;
+                }
+                
+                case "status": {
+                    JSONObject status = McpBridge.getInstance().getStatus();
+                    response.putResult("status", status.toString());
+                    response.putResult("success", true);
+                    break;
+                }
+                
+                default:
+                    return AidlAciResponse.error(
+                        AidlAciError.BAD_REQUEST,
+                        "未知操作: " + action
+                    );
+            }
+            
+            return response;
+        } catch (Exception e) {
+            Log.e(TAG, "MCP 桥接操作失败: " + action, e);
+            return AidlAciResponse.error(
+                AidlAciError.INTERNAL_ERROR,
+                "操作失败: " + e.getMessage()
+            );
+        }
     }
 
     /**
